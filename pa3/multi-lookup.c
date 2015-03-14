@@ -12,6 +12,8 @@
 
 #define QMAXSIZE 10
 
+//Need to init some muetexes in here for files
+
 //Should have returns for the different errors that are given in the assignment.
 int load(file){ //Function to handle building a queue from the file.
 		
@@ -22,8 +24,16 @@ int reswrite(queue){ //Function to resolve hostnames and then write to the file.
 
 }
 void main(int argc, char *argv){
+		//Open the output file
+		FILE *ouput;
+		output = fopen("output.txt", "w");
 		//Iterate over the *argv array giving the names of files and performing operations on each one. 
-		int i = 2;
+		int i = 1;
+		for(i; i < argc; i++){
+
+		}
+				
+
 			
 
 			
