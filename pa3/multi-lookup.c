@@ -18,9 +18,6 @@
 #define MINRTHREADS 2
 #define MAXNLEN 1025
 
-//Find the number of cores on this machine
-//int NUMCORES = (int)get_nprocs();
-int NUMCORES = 0;
 //Need to init some muetexes in here for les
 pthread_mutex_t qlock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t flock = PTHREAD_MUTEX_INITIALIZER;
@@ -49,7 +46,7 @@ void* req(void* inle){ //Function to handle building a queue from the input les.
 		}		
 
 		//Now loop over reading the le until it contains no unread data
-		while(fscanf(le, "%1025s", lineread) > 0){
+		while(fscanf(le, "%1024s", lineread) > 0){
 				pthread_mutex_lock(&qlock);
 				while(queue_is_full(&q)){
 						pthread_mutex_unlock(&qlock);
@@ -59,9 +56,9 @@ void* req(void* inle){ //Function to handle building a queue from the input les.
 				//Push the lines read onto the queue
 				int queueval = queue_push(&q, strdup(lineread));
 				if(queueval){
-						printf("Queue returned with errors on string push");
-						exit(1);
+						printf("Queue returned with errors on string push: %d", queueval);
 				}
+				pthread_mutex_unlock(&qlock);
 		}	
 		return NULL;
 
@@ -109,7 +106,7 @@ int main(int argc, char **argv){
 		//create the output le and check to make sure it worked
 		FILE *output = fopen("output.txt", "w");
 		if(!output){
-				printf("Error creating output ile");
+				printf("Error creating output le");
 				exit(1);
 		}
 		fclose(output);
@@ -138,15 +135,16 @@ int main(int argc, char **argv){
 
 		//Calculate the number of resolver threads to use based on CPU
 		int threadsUtilized;
-		if(NUMCORES == 0){
+		if(get_nprocs() == 0){
 				threadsUtilized = 2;
 		}
 		else{
-				threadsUtilized = NUMCORES;
+				threadsUtilized = get_nprocs();
 		}		
 		
 		//Create the resolver threads
-		pthread_t resThreads[threadsUtilized];
+		//pthread_t resThreads[threadsUtilized];
+		pthread_t *resThreads = malloc(sizeof(pthread_t)*threadsUtilized);
 		for(i = 0; i < threadsUtilized; i++){
 				error = pthread_create(&(resThreads[i]), NULL, resolver, NULL);
 				if(error){
