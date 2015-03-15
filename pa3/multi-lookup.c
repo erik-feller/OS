@@ -19,9 +19,8 @@
 #define MAXNLEN 1025
 
 //Find the number of cores on this machine
-int num;
-num = (int)get_nprocs();
-
+//int NUMCORES = (int)get_nprocs();
+int NUMCORES = 0;
 //Need to init some muetexes in here for les
 pthread_mutex_t qlock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t flock = PTHREAD_MUTEX_INITIALIZER;
@@ -106,15 +105,14 @@ void* resolver(void* input){ //Function to resolve hostnames and then write to t
 		return NULL;
 
 }
-void main(int argc, char *argv){
+int main(int argc, char **argv){
 		//create the output le and check to make sure it worked
-		FILE *ouput;
-		output = fopen("output.txt", "w");
+		FILE *output = fopen("output.txt", "w");
 		if(!output){
 				printf("Error creating output ile");
 				exit(1);
 		}
-		fclose(f);
+		fclose(output);
 
 		//Check to see if the number of input les exceeds the max allowed
 		if(argc > MINPUT+1){
@@ -132,7 +130,7 @@ void main(int argc, char *argv){
 		heapStore *heapStuff = malloc(sizeof(heapStore)*numThreads); //This is allocating space to store the input les on the heap.
 		for(i = 0; i < numThreads; i++){
 				heapStuff[i].data = argv[i+1];
-				error = pthread_create(&(requesterThreads[i]), NULL, req, &heapStuff[i]);
+				error = pthread_create(&(reqThreads[i]), NULL, req, &heapStuff[i]);
 				if(error){
 					printf("pthread couldn't be created.\nError No. %d", error);
 				}
@@ -148,20 +146,27 @@ void main(int argc, char *argv){
 		}		
 		
 		//Create the resolver threads
-		pthread_t resolverThreads[threadsUtilized];
+		pthread_t resThreads[threadsUtilized];
 		for(i = 0; i < threadsUtilized; i++){
-				error = pthread_create(&(resolverThreads[i]), NULL, resolver, NULL);
+				error = pthread_create(&(resThreads[i]), NULL, resolver, NULL);
 				if(error){
 						printf("pthread couldn't be created.\nError No. %d", error);
 				}
 		}
 
 		//Now just execute through the threads
+		for(i = 0; i < numThreads; i++){
+				pthread_join(reqThreads[i], NULL);
+		}
+		requestFinished = 1;
+		for(i = 0; i < threadsUtilized; i++){
+				pthread_join(resThreads[i], NULL);
+		}
 
 		//Now clean up the stuff
 		queue_cleanup(&q);
 		free(heapStuff);
-		free(requesterThreads);
-		free(resolverThreads);
-					
+		free(reqThreads);
+		free(resThreads);
+		return 0;	
 }
