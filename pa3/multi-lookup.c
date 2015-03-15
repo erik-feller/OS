@@ -9,6 +9,7 @@
 #include <strings.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/sysinfo.h>
 
 //Defined limits
 #define QMAXSIZE 10
@@ -18,12 +19,12 @@
 #define MAXNLEN 1025
 
 //Find the number of cores on this machine
-int NUMCORES = sysconf(_SC_NPROCESSORS_ONLN);
+int num;
+num = (int)get_nprocs();
 
 //Need to init some muetexes in here for les
 pthread_mutex_t qlock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t flock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t rlock = PTHREAD_MUTEX_INITIALIZER;
 
 //Declare gloabal vars
 queue q; //queue to hold the data read from the les
@@ -35,20 +36,21 @@ typedef struct {
 }heapStore;
 
 void* req(void* inle){ //Function to handle building a queue from the input les.
-		//Use the heap storage variable to retrive the input file that will be used for this thread
-		char lename[MAXNLEN];
+		//Use the heap storage variable to retrive the input le that will be used for this thread
+		char *lename;
 		char lineread[1025];
-		lename = inle->data;
-		FILE *le = fopen(lename, 'r');
+		heapStore *secondary = inle; //This line to kill a warning
+		lename = secondary->data;
+		FILE *le = fopen(lename, "r");
 		
-		//Do a check to make sure the file exitst
+		//Do a check to make sure the le exitst
 		if (le == NULL){
 				printf("Input le is not valid\n");
 				exit(1);
 		}		
 
-		//Now loop over reading the file until it contains no unread data
-		while(fscanf(file, "%1025s", line) > 0){
+		//Now loop over reading the le until it contains no unread data
+		while(fscanf(le, "%1025s", lineread) > 0){
 				pthread_mutex_lock(&qlock);
 				while(queue_is_full(&q)){
 						pthread_mutex_unlock(&qlock);
@@ -56,7 +58,7 @@ void* req(void* inle){ //Function to handle building a queue from the input les.
 						pthread_mutex_unlock(&qlock);
 				}
 				//Push the lines read onto the queue
-				int queueval = queue_push(&q, strdup(line));
+				int queueval = queue_push(&q, strdup(lineread));
 				if(queueval){
 						printf("Queue returned with errors on string push");
 						exit(1);
@@ -67,6 +69,41 @@ void* req(void* inle){ //Function to handle building a queue from the input les.
 }
 
 void* resolver(void* input){ //Function to resolve hostnames and then write to the le.
+		(void) input; //This is to kill a warning
+		//set a loop to wait until all the input has been read or if the queue is empty
+		while(!requestFinished | !queue_is_empty(&q)){
+				char *handle;
+				char ip[INET6_ADDRSTRLEN];
+				pthread_mutex_lock(&qlock);
+				if(!queue_is_empty(&q)){
+						handle = queue_pop(&q);
+						pthread_mutex_unlock(&qlock);
+				}
+				else{
+						//If the queue is empty just wait some time. Skips rest of loop
+						pthread_mutex_unlock(&qlock);
+						usleep(10);
+						continue;
+				}
+				
+				//Now remove the newline from the hostname
+				char *curr;
+				if((curr = strchr(handle, '\n')) != NULL){
+						*curr = '\0';
+				}
+				if(dnslookup(handle, ip, 64)){
+						*ip = '\0';
+				}
+				
+				//Write to output
+				pthread_mutex_lock(&flock);
+				FILE *le = fopen("results.txt", "a");
+				fprintf(le, "%s, %s\n", handle, ip);
+				fclose(le); //Close that le
+				pthread_mutex_unlock(&flock);
+				free(handle);
+		}
+		return NULL;
 
 }
 void main(int argc, char *argv){
@@ -95,7 +132,7 @@ void main(int argc, char *argv){
 		heapStore *heapStuff = malloc(sizeof(heapStore)*numThreads); //This is allocating space to store the input les on the heap.
 		for(i = 0; i < numThreads; i++){
 				heapStuff[i].data = argv[i+1];
-				error = pthread_create(&(requesterThreads[i]), NULL, request, &heapStuff[i]);
+				error = pthread_create(&(requesterThreads[i]), NULL, req, &heapStuff[i]);
 				if(error){
 					printf("pthread couldn't be created.\nError No. %d", error);
 				}
