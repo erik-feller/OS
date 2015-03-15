@@ -17,9 +17,9 @@ Adopted from previous code by
 
 ---Folders---
 input - names*.txt input files
-handout - Assignment description and documentation
 
 ---Executables---
+multi-lookup - A multi threaded approach to DNS
 lookup - A basic non-threaded DNS query-er
 queueTest - Unit test program for queue
 pthread-hello ; A simple threaded "Hello World" program
@@ -33,9 +33,14 @@ Clean:
 
 Lookup DNS info for all names files in input folder:
  ./lookup input/names*.txt results.txt
+For multi threaded
+ ./multi-lookup input/names*.txt (the results will always come out at results.txt
 
 Check queue for memory leaks:
  valgrind ./queueTest
 
 Run pthread-hello
  ./pthread-hello
+
+Adapting to number of cores on the current machine:
+We chose to have the program assign the same number of threads as there are cores for resolving the DNS names. The logic behind this was that the processor would spend less time context switching between threads so that it would be faster. It was difficult to get consistent timing data from the unix system so benchmarking wasn't really conclusive so we relied on this knowledge from class.
