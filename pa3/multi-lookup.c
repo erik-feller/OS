@@ -51,7 +51,7 @@ void* req(void* inle){ //Function to handle building a queue from the input les.
 				while(queue_is_full(&q)){
 						pthread_mutex_unlock(&qlock);
 						usleep(16);
-						pthread_mutex_unlock(&qlock);
+						pthread_mutex_lock(&qlock);
 				}
 				//Push the lines read onto the queue
 				int queueval = queue_push(&q, strdup(lineread));
