@@ -62,6 +62,7 @@ int main(int argc, char* argv[]){
     /* Set supplied output filename base or default if not supplied */
 	strncpy(outputFilenameBase, DEFAULT_OUTPUTFILENAMEBASE, MAXFILENAMELENGTH);
     /* Confirm blocksize is multiple of and less than transfersize*/
+	buffersize = DEFAULT_BLOCKSIZE;
 	if(!strcmp(argv[1], "SCHED_OTHER")){
         policy = SCHED_OTHER;
     }

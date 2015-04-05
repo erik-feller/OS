@@ -16,7 +16,7 @@
 #include <errno.h>
 
 /* Local Defines */
-#define DEFAULT_ITERATIONS 9000000000
+#define DEFAULT_ITERATIONS 85000000
 #define RADIUS (RAND_MAX / 2)
 
 /* Local Functions */
@@ -51,7 +51,7 @@ int main(int argc, char* argv[]){
 	    exit(EXIT_FAILURE);
 	}
     }
-
+	printf("%l",iterations);
     /* Calculate pi using statistical methode across all iterations*/
     for(i=0; i<iterations; i++){
 	x = (random() % (RADIUS * 2)) - RADIUS;
