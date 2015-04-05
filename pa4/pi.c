@@ -16,7 +16,7 @@
 #include <errno.h>
 
 /* Local Defines */
-#define DEFAULT_ITERATIONS 1000000
+#define DEFAULT_ITERATIONS 9000000000
 #define RADIUS (RAND_MAX / 2)
 
 /* Local Functions */

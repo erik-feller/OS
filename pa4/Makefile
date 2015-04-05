@@ -12,7 +12,7 @@ INPUTBLOCKS = $(shell echo $(INPUTFILESIZEBYTES)\/$(INPUTBLOCKSIZEBYTES) | bc)
 
 .PHONY: all clean
 
-all: pi pi-sched rw rr_quantum
+all: pi pi-sched rw multi-sched
 
 pi: pi.o
 	$(CC) $(LFLAGS) $^ -o $@ -lm
@@ -23,7 +23,7 @@ pi-sched: pi-sched.o
 rw: rw.o rwinput
 	$(CC) $(LFLAGS) rw.o -o $@ -lm
 
-rr_quantum: rr_quantum.o
+multi-sched: multi-sched.o
 	$(CC) $(LFLAGS) $^ -o $@ -lm
 
 pi.o: pi.c
@@ -35,11 +35,11 @@ pi-sched.o: pi-sched.c
 rw.o: rw.c
 	$(CC) $(CFLAGS) $<
 
+multi-sched.o: multi-sched.c
+	$(CC) $(CFLAGS) $<
+
 rwinput: Makefile
 	dd if=/dev/urandom of=./rwinput bs=$(INPUTBLOCKSIZEBYTES) count=$(INPUTBLOCKS)
-
-rr_quantum.o: rr_quantum.c
-	$(CC) $(CFLAGS) $<
 
 clean: testclean
 	rm -f pi pi-sched rw rr_quantum

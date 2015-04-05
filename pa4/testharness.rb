@@ -8,4 +8,6 @@
 #If I feel fancy it'll output a .csv file to use in excel. But I probably won't
 #*********************************************************************
 
+numruns = 5 #Variable controls how many runs you want to do. They are averaged and output
+
 
