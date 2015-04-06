@@ -15,8 +15,8 @@
 #define DEFAULT_INPUTFILENAME "rwinput"
 #define DEFAULT_OUTPUTFILENAMEBASE "rwoutput"
 #define DEFAULT_BLOCKSIZE 1024
-#define DEFAULT_TRANSFERSIZE 1024*50
-#define DEFAULT_ITERATIONS 42500000
+#define DEFAULT_TRANSFERSIZE 1024
+#define DEFAULT_ITERATIONS 850000
 #define RADIUS (RAND_MAX / 2)
 
 inline double dist(double x0, double y0, double x1, double y1){
@@ -55,6 +55,7 @@ int main(int argc, char* argv[]){
 	int inputFileResets = 0;
 	ssize_t bytesWritten = 0;
 	int rv;
+	int numfork = 0;
 	iterations = DEFAULT_ITERATIONS;
 	transfersize = DEFAULT_TRANSFERSIZE;
 	blocksize = DEFAULT_BLOCKSIZE;
@@ -76,6 +77,8 @@ int main(int argc, char* argv[]){
 	    exit(EXIT_FAILURE);
 	}
     
+	numfork = atoi(argv[2])-1;
+
     /* Set process to max prioty for given scheduler */
     param.sched_priority = sched_get_priority_max(policy);
     
@@ -87,6 +90,10 @@ int main(int argc, char* argv[]){
 	exit(EXIT_FAILURE);
     }
     fprintf(stdout, "New Scheduling Policy: %d\n", sched_getscheduler(0));
+
+	while (numfork > 0 && !fork()){
+			numfork--;
+	}
 
     /* Calculate pi using statistical methode across all iterations*/
     for(i=0; i<iterations; i++){

@@ -1,0 +1,135 @@
+pi-sched SCHED_OTHER 10
+
+real	0m0.220s
+user	0m0.220s
+sys	0m0.000s
+pi-sched SCHED_OTHER 100
+
+real	0m0.492s
+user	0m0.193s
+sys	0m0.000s
+pi-sched SCHED_OTHER 1000
+
+real	0m2.361s
+user	0m0.230s
+sys	0m0.000s
+pi-sched SCHED_FIFO 10
+
+real	0m0.523s
+user	0m0.237s
+sys	0m0.000s
+pi-sched SCHED_FIFO 100
+
+real	0m1.148s
+user	0m0.217s
+sys	0m0.000s
+pi-sched SCHED_FIFO 1000
+
+real	0m2.003s
+user	0m0.197s
+sys	0m0.000s
+pi-sched SCHED_RR 10
+
+real	0m1.000s
+user	0m0.207s
+sys	0m0.000s
+pi-sched SCHED_RR 100
+
+real	0m1.000s
+user	0m0.217s
+sys	0m0.000s
+pi-sched SCHED_RR 1000
+
+real	0m1.000s
+user	0m0.190s
+sys	0m0.000s
+rw SCHED_OTHER 10
+
+real	0m3.000s
+user	0m0.000s
+sys	0m0.000s
+rw SCHED_OTHER 100
+
+real	0m4.001s
+user	0m0.000s
+sys	0m0.000s
+rw SCHED_OTHER 1000
+
+real	0m2.998s
+user	0m0.000s
+sys	0m0.000s
+rw SCHED_FIFO 10
+
+real	0m5.000s
+user	0m0.000s
+sys	0m0.000s
+rw SCHED_FIFO 100
+
+real	0m5.000s
+user	0m0.000s
+sys	0m0.000s
+rw SCHED_FIFO 1000
+
+real	0m8.001s
+user	0m0.000s
+sys	0m0.010s
+rw SCHED_RR 10
+
+real	0m2.999s
+user	0m0.000s
+sys	0m0.000s
+rw SCHED_RR 100
+
+real	0m6.000s
+user	0m0.003s
+sys	0m0.000s
+rw SCHED_RR 1000
+
+real	0m3.997s
+user	0m0.000s
+sys	0m0.000s
+multi-sched SCHED_OTHER 10
+
+real	0m12.931s
+user	0m0.087s
+sys	0m0.000s
+multi-sched SCHED_OTHER 100
+
+real	0m1.326s
+user	0m0.087s
+sys	0m0.000s
+multi-sched SCHED_OTHER 1000
+
+real	0m1.589s
+user	0m0.090s
+sys	0m0.000s
+multi-sched SCHED_FIFO 10
+
+real	0m0.207s
+user	0m0.083s
+sys	0m0.003s
+multi-sched SCHED_FIFO 100
+
+real	0m0.582s
+user	0m0.083s
+sys	0m0.003s
+multi-sched SCHED_FIFO 1000
+
+real	0m3.394s
+user	0m0.087s
+sys	0m0.000s
+multi-sched SCHED_RR 10
+
+real	0m2.713s
+user	0m0.087s
+sys	0m0.000s
+multi-sched SCHED_RR 100
+
+real	0m3.000s
+user	0m0.087s
+sys	0m0.000s
+multi-sched SCHED_RR 1000
+
+real	0m2.201s
+user	0m0.087s
+sys	0m0.000s

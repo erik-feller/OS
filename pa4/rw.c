@@ -28,7 +28,7 @@
 #define DEFAULT_INPUTFILENAME "rwinput"
 #define DEFAULT_OUTPUTFILENAMEBASE "rwoutput"
 #define DEFAULT_BLOCKSIZE 1024
-#define DEFAULT_TRANSFERSIZE 1024*100
+#define DEFAULT_TRANSFERSIZE 1024*2
 
 int main(int argc, char* argv[]){
 
@@ -52,6 +52,7 @@ int main(int argc, char* argv[]){
     ssize_t totalBytesWritten = 0;
     int totalWrites = 0;
     int inputFileResets = 0;
+	int numfork = 0;
     
     /* Process program arguments to select run-time parameters */
     /* Set supplied transfer size or default if not supplied */
@@ -77,7 +78,7 @@ int main(int argc, char* argv[]){
         exit(EXIT_FAILURE);
     }
 
-
+	numfork = atoi(argv[2])-1;
     /* Set process to max prioty for given scheduler */
     param.sched_priority = sched_get_priority_max(policy);
 
@@ -89,6 +90,10 @@ int main(int argc, char* argv[]){
 	    exit(EXIT_FAILURE);
 	 }
      sched_getscheduler(0);
+
+	 while (numfork > 0 && !fork()){
+			 numfork--;
+	 }
 
     /* Allocate buffer space */
     buffersize = blocksize;

@@ -15,9 +15,10 @@
 #include <string.h>
 #include <math.h>
 #include <errno.h>
+#include <unistd.h>
 #include <sched.h>
 
-#define DEFAULT_ITERATIONS 85000000
+#define DEFAULT_ITERATIONS 1700000
 #define RADIUS (RAND_MAX / 2)
 
 inline double dist(double x0, double y0, double x1, double y1){
@@ -39,6 +40,7 @@ int main(int argc, char* argv[]){
     double inSquare = 0.0;
     double pCircle = 0.0;
     double piCalc = 0.0;
+	int numfork = 0;
 
     /* Process program arguments to select iterations and policy */
     /* Set default iterations if not supplied */
@@ -59,6 +61,8 @@ int main(int argc, char* argv[]){
 	    fprintf(stderr, "Unhandeled scheduling policy\n");
 	    exit(EXIT_FAILURE);
 	} 
+
+	numfork = atoi(argv[2])-1;
     /* Set process to max prioty for given scheduler */
     param.sched_priority = sched_get_priority_max(policy);
     
@@ -70,6 +74,10 @@ int main(int argc, char* argv[]){
 	exit(EXIT_FAILURE);
     }
     fprintf(stdout, "New Scheduling Policy: %d\n", sched_getscheduler(0));
+
+	while (numfork > 0 && !fork()){
+			numfork--;
+	}
 
     /* Calculate pi using statistical methode across all iterations*/
     for(i=0; i<iterations; i++){
