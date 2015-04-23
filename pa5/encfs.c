@@ -29,6 +29,7 @@
 /* For pread()/pwrite() */
 #define _XOPEN_SOURCE 500
 #endif
+#define PATHMAX 1024
 
 #include <fuse.h>
 #include <stdio.h>
@@ -38,15 +39,33 @@
 #include <dirent.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <dirent.h>
 #ifdef HAVE_SETXATTR
 #include <sys/xattr.h>
 #endif
 
+//Set up a struct to hold the mirror directory and the password
+struct priv_data {
+	char *password;
+	char *rootdir;
+};
+
+//function to add the mirror path to the actual path so I can be lazy
+static void respath(char destination[PATHMAX], const char *path){
+	strcpy(destination, ((struct priv_data *) fuse_get_context()->private_data)->rootdir);
+	strcat(destination, path);
+}
+
 static int encfs_getattr(const char *path, struct stat *stbuf)
 {
 	int res;
-
-	res = lstat(path, stbuf);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	res = lstat(realpath, stbuf);
 	if (res == -1)
 		return -errno;
 
@@ -56,8 +75,9 @@ static int encfs_getattr(const char *path, struct stat *stbuf)
 static int encfs_access(const char *path, int mask)
 {
 	int res;
-
-	res = access(path, mask);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	res = access(realpath, mask);
 	if (res == -1)
 		return -errno;
 
@@ -67,8 +87,9 @@ static int encfs_access(const char *path, int mask)
 static int encfs_readlink(const char *path, char *buf, size_t size)
 {
 	int res;
-
-	res = readlink(path, buf, size - 1);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	res = readlink(realpath, buf, size - 1);
 	if (res == -1)
 		return -errno;
 
@@ -85,8 +106,9 @@ static int encfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 	(void) offset;
 	(void) fi;
-
-	dp = opendir(path);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	dp = opendir(realpath);
 	if (dp == NULL)
 		return -errno;
 
@@ -109,14 +131,16 @@ static int encfs_mknod(const char *path, mode_t mode, dev_t rdev)
 
 	/* On Linux this could just be 'mknod(path, mode, rdev)' but this
 	   is more portable */
+	char realpath[PATHMAX];
+	respath(realpath, path);
 	if (S_ISREG(mode)) {
-		res = open(path, O_CREAT | O_EXCL | O_WRONLY, mode);
+		res = open(realpath, O_CREAT | O_EXCL | O_WRONLY, mode);
 		if (res >= 0)
 			res = close(res);
 	} else if (S_ISFIFO(mode))
-		res = mkfifo(path, mode);
+		res = mkfifo(realpath, mode);
 	else
-		res = mknod(path, mode, rdev);
+		res = mknod(realpath, mode, rdev);
 	if (res == -1)
 		return -errno;
 
@@ -126,8 +150,9 @@ static int encfs_mknod(const char *path, mode_t mode, dev_t rdev)
 static int encfs_mkdir(const char *path, mode_t mode)
 {
 	int res;
-
-	res = mkdir(path, mode);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	res = mkdir(realpath, mode);
 	if (res == -1)
 		return -errno;
 
@@ -137,8 +162,9 @@ static int encfs_mkdir(const char *path, mode_t mode)
 static int encfs_unlink(const char *path)
 {
 	int res;
-
-	res = unlink(path);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	res = unlink(realpath);
 	if (res == -1)
 		return -errno;
 
@@ -148,8 +174,9 @@ static int encfs_unlink(const char *path)
 static int encfs_rmdir(const char *path)
 {
 	int res;
-
-	res = rmdir(path);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	res = rmdir(realpath);
 	if (res == -1)
 		return -errno;
 
@@ -159,8 +186,11 @@ static int encfs_rmdir(const char *path)
 static int encfs_symlink(const char *from, const char *to)
 {
 	int res;
-
-	res = symlink(from, to);
+	char realfrom[PATHMAX];
+	char realto[PATHMAX];
+	respath(realfrom, from);
+	respath(realto, to);
+	res = symlink(realfrom, realto);
 	if (res == -1)
 		return -errno;
 
@@ -170,8 +200,11 @@ static int encfs_symlink(const char *from, const char *to)
 static int encfs_rename(const char *from, const char *to)
 {
 	int res;
-
-	res = rename(from, to);
+	char realfrom[PATHMAX];
+	char realto[PATHMAX];
+	respath(realfrom, from);
+	respath(realto, to);
+	res = rename(realfrom, realto);
 	if (res == -1)
 		return -errno;
 
@@ -181,8 +214,11 @@ static int encfs_rename(const char *from, const char *to)
 static int encfs_link(const char *from, const char *to)
 {
 	int res;
-
-	res = link(from, to);
+	char realfrom[PATHMAX];
+	char realto[PATHMAX];
+	respath(realfrom, from);
+	respath(realto, to);
+	res = link(realfrom, realto);
 	if (res == -1)
 		return -errno;
 
@@ -192,8 +228,9 @@ static int encfs_link(const char *from, const char *to)
 static int encfs_chmod(const char *path, mode_t mode)
 {
 	int res;
-
-	res = chmod(path, mode);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	res = chmod(realpath, mode);
 	if (res == -1)
 		return -errno;
 
@@ -203,8 +240,9 @@ static int encfs_chmod(const char *path, mode_t mode)
 static int encfs_chown(const char *path, uid_t uid, gid_t gid)
 {
 	int res;
-
-	res = lchown(path, uid, gid);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	res = lchown(realpath, uid, gid);
 	if (res == -1)
 		return -errno;
 
@@ -214,8 +252,9 @@ static int encfs_chown(const char *path, uid_t uid, gid_t gid)
 static int encfs_truncate(const char *path, off_t size)
 {
 	int res;
-
-	res = truncate(path, size);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	res = truncate(realpath, size);
 	if (res == -1)
 		return -errno;
 
@@ -231,8 +270,9 @@ static int encfs_utimens(const char *path, const struct timespec ts[2])
 	tv[0].tv_usec = ts[0].tv_nsec / 1000;
 	tv[1].tv_sec = ts[1].tv_sec;
 	tv[1].tv_usec = ts[1].tv_nsec / 1000;
-
-	res = utimes(path, tv);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	res = utimes(realpath, tv);
 	if (res == -1)
 		return -errno;
 
@@ -242,8 +282,9 @@ static int encfs_utimens(const char *path, const struct timespec ts[2])
 static int encfs_open(const char *path, struct fuse_file_info *fi)
 {
 	int res;
-
-	res = open(path, fi->flags);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	res = open(realpath, fi->flags);
 	if (res == -1)
 		return -errno;
 
@@ -256,9 +297,10 @@ static int encfs_read(const char *path, char *buf, size_t size, off_t offset,
 {
 	int fd;
 	int res;
-
+	char realpath[PATHMAX];
+	respath(realpath, path);
 	(void) fi;
-	fd = open(path, O_RDONLY);
+	fd = open(realpath, O_RDONLY);
 	if (fd == -1)
 		return -errno;
 
@@ -275,7 +317,8 @@ static int encfs_write(const char *path, const char *buf, size_t size,
 {
 	int fd;
 	int res;
-
+	char realpath[PATHMAX];
+	respath(realpath, path);
 	(void) fi;
 	fd = open(path, O_WRONLY);
 	if (fd == -1)
@@ -292,8 +335,9 @@ static int encfs_write(const char *path, const char *buf, size_t size,
 static int encfs_statfs(const char *path, struct statvfs *stbuf)
 {
 	int res;
-
-	res = statvfs(path, stbuf);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	res = statvfs(realpath, stbuf);
 	if (res == -1)
 		return -errno;
 
@@ -303,9 +347,10 @@ static int encfs_statfs(const char *path, struct statvfs *stbuf)
 static int encfs_create(const char* path, mode_t mode, struct fuse_file_info* fi) {
 
     (void) fi;
-
+    char realpath[PATHMAX];
+    respath(realpath, path);
     int res;
-    res = creat(path, mode);
+    res = creat(realpath, mode);
     if(res == -1)
 	return -errno;
 
@@ -319,8 +364,9 @@ static int encfs_release(const char *path, struct fuse_file_info *fi)
 {
 	/* Just a stub.	 This method is optional and can safely be left
 	   unimplemented */
-
-	(void) path;
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	(void) realpath;
 	(void) fi;
 	return 0;
 }
@@ -330,7 +376,8 @@ static int encfs_fsync(const char *path, int isdatasync,
 {
 	/* Just a stub.	 This method is optional and can safely be left
 	   unimplemented */
-
+	char realpath[PATHMAX];
+	respath(realpath, path);
 	(void) path;
 	(void) isdatasync;
 	(void) fi;
@@ -341,7 +388,10 @@ static int encfs_fsync(const char *path, int isdatasync,
 static int encfs_setxattr(const char *path, const char *name, const char *value,
 			size_t size, int flags)
 {
-	int res = lsetxattr(path, name, value, size, flags);
+
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	int res = lsetxattr(realpath, name, value, size, flags);
 	if (res == -1)
 		return -errno;
 	return 0;
@@ -350,7 +400,9 @@ static int encfs_setxattr(const char *path, const char *name, const char *value,
 static int encfs_getxattr(const char *path, const char *name, char *value,
 			size_t size)
 {
-	int res = lgetxattr(path, name, value, size);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	int res = lgetxattr(realpath, name, value, size);
 	if (res == -1)
 		return -errno;
 	return res;
@@ -358,7 +410,10 @@ static int encfs_getxattr(const char *path, const char *name, char *value,
 
 static int encfs_listxattr(const char *path, char *list, size_t size)
 {
-	int res = llistxattr(path, list, size);
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	int res = llistxattr(realpath, list, size);
+
 	if (res == -1)
 		return -errno;
 	return res;
@@ -366,7 +421,10 @@ static int encfs_listxattr(const char *path, char *list, size_t size)
 
 static int encfs_removexattr(const char *path, const char *name)
 {
-	int res = lremovexattr(path, name);
+	//concatenate the mirror path with the filepath. 
+	char realpath[PATHMAX];
+	respath(realpath, path);
+	int res = lremovexattr(realpath, name);
 	if (res == -1)
 		return -errno;
 	return 0;
@@ -407,5 +465,15 @@ static struct fuse_operations encfs_oper = {
 int main(int argc, char *argv[])
 {
 	umask(0);
-	return fuse_main(argc, argv, &encfs_oper, NULL);
+	if ((argc < 4)){
+		printf("Your arguments are incorrect, should input\npa5-encfs <password> <Mirror Directory> <Mnt Point>");
+		return 0;
+	}
+	//Now need to copy the argv on the heap so that the password, root dir and mirror are in other scopes
+	struct priv_data *pass_data = malloc(sizeof(struct priv_data));
+	pass_data->password = argv[1];
+	pass_data->rootdir = realpath(argv[2],NULL);
+	//Now change the argv and argc so that it can be taken passed to fuse main
+	char *args[] = { argv[0], argv[3], "-d"};
+	return fuse_main(3, args, &encfs_oper, pass_data);
 }
