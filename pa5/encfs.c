@@ -25,6 +25,9 @@
 #include <config.h>
 #endif
 
+//include the aes-crypt file
+#include "aes-crypt.h"
+
 #ifdef linux
 /* For pread()/pwrite() */
 #define _XOPEN_SOURCE 500
@@ -48,6 +51,9 @@
 #include <sys/xattr.h>
 #endif
 
+//Declare a global variable to hold the path of the temporary file with decrypted contents
+char temppath[1024];
+
 //Set up a struct to hold the mirror directory and the password
 struct priv_data {
 	char *password;
@@ -58,6 +64,14 @@ struct priv_data {
 static void respath(char destination[PATHMAX], const char *path){
 	strcpy(destination, ((struct priv_data *) fuse_get_context()->private_data)->rootdir);
 	strcat(destination, path);
+}
+
+void encfs_encrypt(){
+	
+}
+
+void encfs_decrypt(){
+
 }
 
 static int encfs_getattr(const char *path, struct stat *stbuf)
@@ -284,6 +298,7 @@ static int encfs_open(const char *path, struct fuse_file_info *fi)
 	int res;
 	char realpath[PATHMAX];
 	respath(realpath, path);
+	do_crypt(
 	res = open(realpath, fi->flags);
 	if (res == -1)
 		return -errno;
