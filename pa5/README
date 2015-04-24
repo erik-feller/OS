@@ -74,6 +74,9 @@ Build OpenSSL/AES Examples and Utilities:
 Clean:
  make clean
 
+***ecnfs Usage***
+./pa5-encfs <Password> <Mirror Dir> <Mountpoint>
+
 ***FUSE Examples***
 
 Mount fusehello on new directory

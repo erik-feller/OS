@@ -27,6 +27,12 @@
 
 //include the aes-crypt file
 #include "aes-crypt.c"
+#define ENCRYPT 1
+#define DECRYPT 0
+#define PASS -1
+#define ENC_ATTR "user.pa5-encfs.encrypted"
+#define ENCRYPTED "true"
+#define UNENCRYPTED "false"
 
 #ifdef linux
 /* For pread()/pwrite() */
@@ -60,7 +66,7 @@ char temppath[1024];
 struct priv_data {
 	char *password;
 	char *rootdir;
-	char *backup;
+	int   lock;
 };
 
 //function to add the mirror path to the actual path so I can be lazy
@@ -308,47 +314,52 @@ static int encfs_read(const char *path, char *buf, size_t size, off_t offset,
 	int res;
 	//Resolve the mirrored path to get us to the actual file
 	char realpath[PATHMAX];
+	char xattrval[8];
 	respath(realpath, path);
 	FILE *out_fp;
 	FILE *in_fp;
+	int action = PASS;
+	int xattrlen = getxattr(realpath, ENC_ATTR, xattrval, 8);
+	if(xattrlen != -1 && (strcmp(xattrval,ENCRYPTED) == 0)){
+		action = DECRYPT;
+	}
 	in_fp = fopen(realpath, "r");
 	out_fp = fopen(TEMP,"w");	
-	do_crypt(in_fp, out_fp, 0, FUSEDATA->password);	
+	do_crypt(in_fp, out_fp, action, FUSEDATA->password);	
 	fclose(in_fp);
 	fclose(out_fp);
 	(void) fi;
 	fd = open(TEMP, O_RDONLY);
 	if (fd == -1)
 		return -errno;
-
 	res = pread(fd, buf, size, offset);
 	if (res == -1)
 		res = -errno;
 
 	close(fd);
-	in_fp = fopen(TEMP, "r");
-	out_fp = fopen(realpath,"w");	
-	do_crypt(in_fp, out_fp, 1, FUSEDATA->password);	
-	fclose(in_fp);
-	fclose(out_fp);
-	//truncate(TEMP, 0);
 	return res;
 }
 
 static int encfs_write(const char *path, const char *buf, size_t size,
 		     off_t offset, struct fuse_file_info *fi)
 {
+	char xattrval[8];
 	FILE *out_fp;
 	FILE *in_fp;
 	int fd;
 	int res;
+	int action = PASS;
 	char realpath[PATHMAX];
 	respath(realpath, path);
 	(void) fi;
+	int xattrlen = getxattr(realpath, ENC_ATTR, xattrval, 8);
+	if(xattrlen != -1 && (strcmp(xattrval,ENCRYPTED) == 0)){
+		action = DECRYPT;
+	}	
 	in_fp = fopen(realpath, "r");
 	out_fp = fopen(TEMP,"w");	
 	printf("unencrypted");
-	do_crypt(in_fp, out_fp, 0, FUSEDATA->password);	
+	do_crypt(in_fp, out_fp, action, FUSEDATA->password);	
 	fclose(in_fp);
 	fclose(out_fp);
 	fd = open(TEMP, O_WRONLY);
@@ -360,12 +371,15 @@ static int encfs_write(const char *path, const char *buf, size_t size,
 		res = -errno;
 
 	close(fd);
+	if(action == DECRYPT){
+		action = ENCRYPT;
+	}	
 	in_fp = fopen(TEMP, "r");
 	out_fp = fopen(realpath,"w");	
-	do_crypt(in_fp, out_fp, 1, FUSEDATA->password);	
+	do_crypt(in_fp, out_fp, action, FUSEDATA->password);	
 	fclose(in_fp);
 	fclose(out_fp);
-//	truncate(TEMP, 0);
+	//truncate(TEMP, 0);
 	return res;
 }
 
@@ -392,6 +406,9 @@ static int encfs_create(const char* path, mode_t mode, struct fuse_file_info* fi
 	return -errno;
 
     close(res);
+    if(setxattr(realpath, ENC_ATTR, ENCRYPTED, sizeof(ENCRYPTED), 0) == -1){
+	return -errno;
+    }
 
     return 0;
 }
@@ -426,9 +443,9 @@ static int encfs_setxattr(const char *path, const char *name, const char *value,
 			size_t size, int flags)
 {
 
-	char realpath[PATHMAX];
-	respath(realpath, path);
-	int res = lsetxattr(realpath, name, value, size, flags);
+	//char realpath[PATHMAX];
+	//respath(realpath, path);
+	int res = lsetxattr(path, name, value, size, flags);
 	if (res == -1)
 		return -errno;
 	return 0;
@@ -437,9 +454,9 @@ static int encfs_setxattr(const char *path, const char *name, const char *value,
 static int encfs_getxattr(const char *path, const char *name, char *value,
 			size_t size)
 {
-	char realpath[PATHMAX];
-	respath(realpath, path);
-	int res = lgetxattr(realpath, name, value, size);
+//	char realpath[PATHMAX];
+//	respath(realpath, path);
+	int res = lgetxattr(path, name, value, size);
 	if (res == -1)
 		return -errno;
 	return res;
@@ -447,9 +464,9 @@ static int encfs_getxattr(const char *path, const char *name, char *value,
 
 static int encfs_listxattr(const char *path, char *list, size_t size)
 {
-	char realpath[PATHMAX];
-	respath(realpath, path);
-	int res = llistxattr(realpath, list, size);
+//	char realpath[PATHMAX];
+//	respath(realpath, path);
+	int res = llistxattr(path, list, size);
 
 	if (res == -1)
 		return -errno;
@@ -459,9 +476,9 @@ static int encfs_listxattr(const char *path, char *list, size_t size)
 static int encfs_removexattr(const char *path, const char *name)
 {
 	//concatenate the mirror path with the filepath. 
-	char realpath[PATHMAX];
-	respath(realpath, path);
-	int res = lremovexattr(realpath, name);
+	//char realpath[PATHMAX];
+	//respath(realpath, path);
+	int res = lremovexattr(path, name);
 	if (res == -1)
 		return -errno;
 	return 0;
@@ -510,6 +527,7 @@ int main(int argc, char *argv[])
 	struct priv_data *pass_data = malloc(sizeof(struct priv_data));
 	pass_data->password = argv[1];
 	pass_data->rootdir = realpath(argv[2],NULL);
+	pass_data->lock = 0;
 	printf("%s", pass_data->password);
 	//Now change the argv and argc so that it can be taken passed to fuse main
 	char *args[] = { argv[0], argv[3], "-d"};
