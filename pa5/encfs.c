@@ -33,6 +33,8 @@
 #define _XOPEN_SOURCE 500
 #endif
 #define PATHMAX 1024
+#define TEMP "/home/user/unsecure/unencrypted"
+#define FUSEDATA ((struct priv_data *) fuse_get_context()->private_data)
 
 #include <fuse.h>
 #include <stdio.h>
@@ -58,20 +60,23 @@ char temppath[1024];
 struct priv_data {
 	char *password;
 	char *rootdir;
+	char *backup;
 };
 
 //function to add the mirror path to the actual path so I can be lazy
 static void respath(char destination[PATHMAX], const char *path){
-	strcpy(destination, ((struct priv_data *) fuse_get_context()->private_data)->rootdir);
+	strcpy(destination, FUSEDATA->rootdir);
 	strcat(destination, path);
 }
 
-void encfs_encrypt(){
+static char* encfs_encrypt(){
+	//if xattr is encrypted	
+	char temploc[1024];
 	
 }
 
-void encfs_decrypt(){
-
+static char* encfs_decrypt(){
+	
 }
 
 static int encfs_getattr(const char *path, struct stat *stbuf)
@@ -312,10 +317,18 @@ static int encfs_read(const char *path, char *buf, size_t size, off_t offset,
 {
 	int fd;
 	int res;
+	//Resolve the mirrored path to get us to the actual file
 	char realpath[PATHMAX];
 	respath(realpath, path);
+	FILE *out_fp;
+	FILE *in_fp;
+	in_fp = fopen(realpath, "r");
+	out_fp = fopen(TEMP,"w");	
+	do_crypt(in_fp, out_fp, 0, FUSEDATA->password);	
+	fclose(in_fp);
+	fclose(out_fp);
 	(void) fi;
-	fd = open(realpath, O_RDONLY);
+	fd = open(TEMP, O_RDONLY);
 	if (fd == -1)
 		return -errno;
 
@@ -324,6 +337,12 @@ static int encfs_read(const char *path, char *buf, size_t size, off_t offset,
 		res = -errno;
 
 	close(fd);
+	in_fp = fopen(TEMP, "r");
+	out_fp = fopen(realpath,"w");	
+	do_crypt(in_fp, out_fp, 1, FUSEDATA->password);	
+	fclose(in_fp);
+	fclose(out_fp);
+	truncate(TEMP, 0);
 	return res;
 }
 
@@ -335,6 +354,11 @@ static int encfs_write(const char *path, const char *buf, size_t size,
 	char realpath[PATHMAX];
 	respath(realpath, path);
 	(void) fi;
+	in_fp = fopen(realpath, "r");
+	out_fp = fopen(TEMP,"w");	
+	do_crypt(in_fp, out_fp, 0, FUSEDATA->password);	
+	fclose(in_fp);
+	fclose(out_fp);
 	fd = open(path, O_WRONLY);
 	if (fd == -1)
 		return -errno;
@@ -344,6 +368,12 @@ static int encfs_write(const char *path, const char *buf, size_t size,
 		res = -errno;
 
 	close(fd);
+	in_fp = fopen(TEMP, "r");
+	out_fp = fopen(realpath,"w");	
+	do_crypt(in_fp, out_fp, 1, FUSEDATA->password);	
+	fclose(in_fp);
+	fclose(out_fp);
+	truncate(TEMP, 0);
 	return res;
 }
 
