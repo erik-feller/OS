@@ -26,11 +26,11 @@
 #endif
 
 //include the aes-crypt file
-#include "aes-crypt.h"
+#include "aes-crypt.c"
 
 #ifdef linux
 /* For pread()/pwrite() */
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 700
 #endif
 #define PATHMAX 1024
 #define TEMP "/home/user/unsecure/unencrypted"
@@ -67,16 +67,6 @@ struct priv_data {
 static void respath(char destination[PATHMAX], const char *path){
 	strcpy(destination, FUSEDATA->rootdir);
 	strcat(destination, path);
-}
-
-static char* encfs_encrypt(){
-	//if xattr is encrypted	
-	char temploc[1024];
-	
-}
-
-static char* encfs_decrypt(){
-	
 }
 
 static int encfs_getattr(const char *path, struct stat *stbuf)
@@ -303,7 +293,6 @@ static int encfs_open(const char *path, struct fuse_file_info *fi)
 	int res;
 	char realpath[PATHMAX];
 	respath(realpath, path);
-	do_crypt(
 	res = open(realpath, fi->flags);
 	if (res == -1)
 		return -errno;
@@ -342,13 +331,15 @@ static int encfs_read(const char *path, char *buf, size_t size, off_t offset,
 	do_crypt(in_fp, out_fp, 1, FUSEDATA->password);	
 	fclose(in_fp);
 	fclose(out_fp);
-	truncate(TEMP, 0);
+	//truncate(TEMP, 0);
 	return res;
 }
 
 static int encfs_write(const char *path, const char *buf, size_t size,
 		     off_t offset, struct fuse_file_info *fi)
 {
+	FILE *out_fp;
+	FILE *in_fp;
 	int fd;
 	int res;
 	char realpath[PATHMAX];
@@ -356,10 +347,11 @@ static int encfs_write(const char *path, const char *buf, size_t size,
 	(void) fi;
 	in_fp = fopen(realpath, "r");
 	out_fp = fopen(TEMP,"w");	
+	printf("unencrypted");
 	do_crypt(in_fp, out_fp, 0, FUSEDATA->password);	
 	fclose(in_fp);
 	fclose(out_fp);
-	fd = open(path, O_WRONLY);
+	fd = open(TEMP, O_WRONLY);
 	if (fd == -1)
 		return -errno;
 
@@ -373,7 +365,7 @@ static int encfs_write(const char *path, const char *buf, size_t size,
 	do_crypt(in_fp, out_fp, 1, FUSEDATA->password);	
 	fclose(in_fp);
 	fclose(out_fp);
-	truncate(TEMP, 0);
+//	truncate(TEMP, 0);
 	return res;
 }
 
@@ -518,6 +510,7 @@ int main(int argc, char *argv[])
 	struct priv_data *pass_data = malloc(sizeof(struct priv_data));
 	pass_data->password = argv[1];
 	pass_data->rootdir = realpath(argv[2],NULL);
+	printf("%s", pass_data->password);
 	//Now change the argv and argc so that it can be taken passed to fuse main
 	char *args[] = { argv[0], argv[3], "-d"};
 	return fuse_main(3, args, &encfs_oper, pass_data);
